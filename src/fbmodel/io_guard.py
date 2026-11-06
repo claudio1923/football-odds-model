@@ -34,13 +34,15 @@ def sha256_file(path) -> str:
     return h.hexdigest()
 
 
-def verify_raw_manifest(manifest_path) -> None:
-    """Manifest lines: '<sha256>  <relative path>' (relative to the manifest's folder).
+def verify_raw_manifest(manifest_path, raw_dir=None) -> None:
+    """Manifest lines: '<sha256>  <path relative to raw_dir>'.
 
-    Raises FileNotFoundError for a missing file and ValueError on a hash mismatch.
+    raw_dir defaults to the configured raw data directory. The manifest itself
+    may live outside raw_dir. Raises FileNotFoundError for a missing file and
+    ValueError on a hash mismatch.
     """
     manifest = Path(manifest_path)
-    base = manifest.parent
+    base = Path(raw_dir) if raw_dir is not None else _raw_dir()
     for line in manifest.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue

@@ -3,6 +3,54 @@ paths:
   interim: data/interim
   processed: data/processed
   reports: reports
-  manifest: data/raw/MANIFEST.sha256
+  manifest: data/manifest/MANIFEST.sha256
+  download_log: data/manifest/download_log.csv
 random_seed: 42
-data_source:  # TODO_PHASE1
+data_source:
+  base_url: https://www.football-data.co.uk
+  main_url_pattern: "{base_url}/mmz4281/{season_code}/{league_code}.csv"
+  extra_url_pattern: "{base_url}/new/{league_code}.csv"
+  notes_url: "{base_url}/notes.txt"
+  main_leagues:
+    I1: Serie A
+    I2: Serie B
+    E0: Premier League
+    SP1: La Liga
+    D1: Bundesliga
+    F1: Ligue 1
+    N1: Eredivisie
+    P1: Primeira Liga
+  extra_leagues:
+    USA: MLS
+    DNK: Denmark
+    SWE: Sweden
+  seasons:  # explicit per league; 2026/27 of the main leagues excluded (in progress)
+    I1: ["2122", "2223", "2324", "2425", "2526"]
+    I2: ["2122", "2223", "2324", "2425", "2526"]
+    E0: ["2122", "2223", "2324", "2425", "2526"]
+    SP1: ["2122", "2223", "2324", "2425", "2526"]
+    D1: ["2122", "2223", "2324", "2425", "2526"]
+    F1: ["2122", "2223", "2324", "2425", "2526"]
+    N1: ["2122", "2223", "2324", "2425", "2526"]
+    P1: ["2122", "2223", "2324", "2425", "2526"]
+    USA: [2021, 2022, 2023, 2024, 2025, 2026]   # calendar year; 2026 in progress, included
+    SWE: [2021, 2022, 2023, 2024, 2025, 2026]   # calendar year; 2026 in progress, included
+    DNK: ["2021/2022", "2022/2023", "2023/2024", "2024/2025", "2025/2026"]  # label as in file
+  played_only: true
+  request_delay_seconds: 2
+  max_retries: 1
+  timeout_seconds: 60
+  user_agent: "fbmodel-research-downloader"
+# Thresholds set before any betting analysis.
+pinnacle_checks:
+  min_coverage: 0.95
+  stale_share_min: 0.10
+  stale_share_multiple: 3
+  overround_range: [1.00, 1.08]
+  divergence_p95_max: 0.05
+inventory:
+  ah_sign_bins: 5          # quantile bins of Pinnacle pre home-win probability for the AH sign check
+  ah_sign_min_rows: 200
+reliability_reference_source: avg   # source compared against Pinnacle in divergence
+columns:
+  availability_file: config/column_availability.yaml

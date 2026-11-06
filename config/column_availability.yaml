@@ -1,0 +1,25 @@
+# Availability moment per column family / timing (rule 1: no future information).
+# Source of the timing definitions: football-data.co.uk notes.txt (quoted in diary.md).
+# available: pre_match | post_match | kickoff_closing
+# use: feature_ok = may become a model feature; evaluation_only = never a feature.
+families:
+  id:            # date, kick-off time, team names are known before the match
+    none: {available: pre_match, use: feature_ok}
+  result:
+    none: {available: post_match, use: evaluation_only}
+  match_stats:
+    none: {available: post_match, use: evaluation_only}
+  odds_1x2:
+    pre:   {available: pre_match, use: feature_ok}
+    close: {available: kickoff_closing, use: evaluation_only}
+  odds_ou:
+    pre:   {available: pre_match, use: feature_ok}
+    close: {available: kickoff_closing, use: evaluation_only}
+  odds_ah:
+    pre:   {available: pre_match, use: feature_ok}
+    close: {available: kickoff_closing, use: evaluation_only}
+  ah_line:
+    pre:   {available: pre_match, use: feature_ok}
+    close: {available: kickoff_closing, use: evaluation_only}
+  other:         # bookmaker-count helper columns (Bb1X2, BbOU, BbAH), pre-closing
+    none:  {available: pre_match, use: feature_ok}

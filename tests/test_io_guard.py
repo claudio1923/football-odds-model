@@ -59,33 +59,37 @@ def test_sha256_file(tmp_path):
 
 
 def _make_manifest(tmp_path, content=b"some,data\n1,2\n"):
-    f = tmp_path / "raw.csv"
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    f = raw / "raw.csv"
     f.write_bytes(content)
-    manifest = tmp_path / "MANIFEST.sha256"
-    manifest.write_text(f"{sha256_file(f)}  raw.csv\n", encoding="utf-8")
-    return f, manifest
+    meta = tmp_path / "meta"
+    meta.mkdir()
+    manifest = meta / "MANIFEST.sha256"
+    manifest.write_text(f"{sha256_file(f)}  raw.csv\n\n", encoding="utf-8")
+    return f, manifest, raw
 
 
 def test_verify_manifest_intact(tmp_path):
-    _, manifest = _make_manifest(tmp_path)
-    verify_raw_manifest(manifest)
+    _, manifest, raw = _make_manifest(tmp_path)
+    verify_raw_manifest(manifest, raw_dir=raw)
 
 
 def test_verify_manifest_detects_changed_byte(tmp_path):
-    f, manifest = _make_manifest(tmp_path)
+    f, manifest, raw = _make_manifest(tmp_path)
     os.chmod(f, stat.S_IWRITE)
     data = bytearray(f.read_bytes())
     data[0] ^= 0x01
     f.write_bytes(bytes(data))
     with pytest.raises(ValueError):
-        verify_raw_manifest(manifest)
+        verify_raw_manifest(manifest, raw_dir=raw)
 
 
 def test_verify_manifest_missing_file(tmp_path):
-    f, manifest = _make_manifest(tmp_path)
+    f, manifest, raw = _make_manifest(tmp_path)
     f.unlink()
     with pytest.raises(FileNotFoundError):
-        verify_raw_manifest(manifest)
+        verify_raw_manifest(manifest, raw_dir=raw)
 
 
 def test_safe_write_path_default_raw_dir_from_config():
