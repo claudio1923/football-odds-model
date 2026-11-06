@@ -11,6 +11,9 @@ CFG = {
         "stale_share_multiple": 3,
         "overround_range": [1.00, 1.08],
         "divergence_p95_max": 0.05,
+        "min_valid_odds": 1.0,
+        "quantile_low": 0.05,
+        "quantile_high": 0.95,
     }
 }
 

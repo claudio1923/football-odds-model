@@ -48,25 +48,26 @@ def implied_probs(odds: pd.DataFrame) -> pd.DataFrame:
     return inv.div(inv.sum(axis=1), axis=0)
 
 
-def odds_block(g: pd.DataFrame, cols):
-    """Odds block as floats, plus the validity mask (all present and > 1.0)."""
+def odds_block(g: pd.DataFrame, cols, min_odds):
+    """Odds block as floats, plus the validity mask (all present and > min_odds)."""
     if not all(c in g.columns for c in cols):
         return None, None
     b = g[cols].apply(pd.to_numeric, errors="coerce")
-    return b, b.notna().all(axis=1) & (b > 1.0).all(axis=1)
+    return b, b.notna().all(axis=1) & (b > min_odds).all(axis=1)
 
 
-def _stats(overround: pd.Series):
+def _stats(overround: pd.Series, q_low, q_high):
     if overround.empty:
         return np.nan, np.nan, np.nan
-    return overround.median(), overround.quantile(0.05), overround.quantile(0.95)
+    return overround.median(), overround.quantile(q_low), overround.quantile(q_high)
 
 
-def _group_row(g: pd.DataFrame, market: str) -> dict:
+def _group_row(g: pd.DataFrame, market: str, chk: dict) -> dict:
     cols = MARKET_COLUMNS[market]
     n = len(g)
     row = {"n_matches": n}
-    blocks = {k: odds_block(g, c) for k, c in cols.items()}
+    blocks = {k: odds_block(g, c, chk["min_valid_odds"]) for k, c in cols.items()}
+    q_low, q_high = chk["quantile_low"], chk["quantile_high"]
     for timing in ("pre", "close"):
         pin, ok = blocks[("pin", timing)]
         if pin is None:
@@ -80,7 +81,7 @@ def _group_row(g: pd.DataFrame, market: str) -> dict:
         row[f"pin_{timing}_coverage"] = ok.sum() / n
         over = (1.0 / pin[ok]).sum(axis=1)
         (row[f"overround_{timing}_median"], row[f"overround_{timing}_p5"],
-         row[f"overround_{timing}_p95"]) = _stats(over)
+         row[f"overround_{timing}_p95"]) = _stats(over, q_low, q_high)
         avg, avg_ok = blocks[("avg", timing)]
         if avg is None:
             row[f"divergence_{timing}_median"] = row[f"divergence_{timing}_p95"] = np.nan
@@ -89,7 +90,7 @@ def _group_row(g: pd.DataFrame, market: str) -> dict:
             div = pd.Series(np.abs(implied_probs(pin[both]).to_numpy()
                                     - implied_probs(avg[both]).to_numpy()).max(axis=1))
             row[f"divergence_{timing}_median"] = div.median() if len(div) else np.nan
-            row[f"divergence_{timing}_p95"] = div.quantile(0.95) if len(div) else np.nan
+            row[f"divergence_{timing}_p95"] = div.quantile(q_high) if len(div) else np.nan
         mx, mx_ok = blocks[("max", timing)]
         if mx is None:
             row[f"max_below_pin_{timing}"] = np.nan
@@ -120,7 +121,7 @@ def monthly_diagnostics(df: pd.DataFrame, cfg) -> pd.DataFrame:
         if not any(c in d.columns for k in (("pin", "pre"), ("pin", "close")) for c in cols[k]):
             continue
         for (league, month), g in d.groupby(["league", "month"], sort=True):
-            r = _group_row(g, market)
+            r = _group_row(g, market, chk)
             r.update({"league": league, "month": month, "market": market})
             rows.append(r)
     out = pd.DataFrame(rows)

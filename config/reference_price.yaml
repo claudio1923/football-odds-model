@@ -1,0 +1,24 @@
+# Reference-price rule (Phase 1, decided by the project owner at "go B").
+# ref_source for a match, market and timing = "pin" only if ALL hold:
+#   (a) the match month is before the league's cutoff_month;
+#   (b) the league-month is not suspect in the 1X2 diagnostics (any reason, any timing);
+#   (c) all Pinnacle outcomes of that market and timing for that match are present and > 1.0.
+# Otherwise "none". Avg never replaces Pinnacle as reference; Avg and Max stay as data columns.
+# Stored per market and timing: ref_source_{1x2,ou25,ah}_{pre,close}
+# ("none" where the file has no such columns). No match is dropped; it only loses the reference.
+# Motivation: the Pinnacle feed degrades before it disappears (SWE: three months of
+# divergence above threshold, then zero coverage), so months after the first flag are not
+# trusted; Avg includes slow, high-margin books and would change the benchmark exactly in
+# the most recent period.
+cutoff_month:
+  E0: "2026-01"
+  I1: "2026-01"
+  SP1: "2026-01"
+  D1: "2026-01"
+  F1: "2026-01"
+  P1: "2026-01"
+  I2: "2025-10"
+  N1: "2025-10"
+  DNK: "2025-11"
+  SWE: "2025-08"
+  USA: "2025-08"

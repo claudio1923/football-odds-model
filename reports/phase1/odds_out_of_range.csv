@@ -1,0 +1,5 @@
+league,season,date,home,away,columns
+E0,2122,2021-12-19,Newcastle,Man City,"odds_ou25_b365_close_over,odds_ou25_b365_close_under"
+F1,2425,2025-04-19,Paris SG,Le Havre,"odds_ou25_pin_close_over,odds_ou25_pin_close_under,odds_ou25_pin_pre_over,odds_ou25_pin_pre_under"
+D1,2425,2025-05-10,Bayern Munich,M'gladbach,"odds_ou25_pin_close_over,odds_ou25_pin_close_under,odds_ou25_pin_pre_over,odds_ou25_pin_pre_under"
+SP1,2526,2025-10-18,Barcelona,Girona,"odds_ou25_pin_close_over,odds_ou25_pin_close_under"

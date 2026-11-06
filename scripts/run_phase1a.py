@@ -19,9 +19,8 @@ from fbmodel.data.reliability import (MARKET_COLUMNS, first_suspect_month, impli
                                       monthly_diagnostics, odds_block)
 from fbmodel.io_guard import safe_write_path, verify_raw_manifest
 
-OUTCOMES = {"1x2": {"H", "D", "A"}, "ou25": {"over", "under"}, "ah": {"home", "away"}}
-SOURCES = ["pinnacle", "max", "avg", "bet365"]
-RESULT_COL = {"main": "FTR", "extra": "Res"}
+INV = {}  # set from config in main(): config section "inventory"
+CHK = {}  # config section "pinnacle_checks"
 
 
 def md_table(df: pd.DataFrame, floatfmt="{:.4f}") -> str:
@@ -102,7 +101,7 @@ def load_all(cfg, snapshot):
 
 
 def played_mask(df, kind):
-    return df[RESULT_COL[kind]].astype("string").str.strip().isin(["H", "D", "A"])
+    return df[INV["result_columns"][kind]].astype("string").str.strip().isin(INV["played_codes"])
 
 
 def slot_columns(cols):
@@ -110,7 +109,7 @@ def slot_columns(cols):
     slots = {}
     for c in cols:
         k = classify_column(c)
-        if k["family"] in ("odds_1x2", "odds_ou", "odds_ah") and k["source"] in SOURCES:
+        if k["family"] in ("odds_1x2", "odds_ou", "odds_ah") and k["source"] in INV["sources"]:
             slots.setdefault((k["market"], k["timing"], k["source"]), {}).setdefault(k["side"], c)
     return slots
 
@@ -118,11 +117,13 @@ def slot_columns(cols):
 def slot_coverage(df, slot):
     cols = list(slot.values())
     b = df[cols].apply(pd.to_numeric, errors="coerce")
-    return float((b.notna().all(axis=1) & (b > 1.0).all(axis=1)).mean()) if len(df) else np.nan
+    return float((b.notna().all(axis=1) & (b > CHK["min_valid_odds"]).all(axis=1)).mean()) if len(df) else np.nan
 
 
 def main():
     cfg = load_config()
+    INV.update(cfg["inventory"])
+    CHK.update(cfg["pinnacle_checks"])
     paths = cfg["paths"]
     snapshot = sys.argv[1] if len(sys.argv) > 1 else date.today().isoformat()
     rep = paths["reports"] / "phase1"
@@ -167,7 +168,7 @@ def main():
     a_tab = pd.DataFrame(a_rows, columns=["league", "season", "rows", "rows_without_result",
                                           "unparsed_dates", "last_date_any_row",
                                           "last_date_played"])
-    live = a_tab[a_tab.league.isin(["USA", "SWE"]) & (a_tab.season == "2026")].copy()
+    live = a_tab[a_tab.apply(lambda r: INV["in_progress"].get(r.league) == r.season, axis=1)].copy()
     live["snapshot_date"] = snapshot
 
     # ---- (b) coverage -----------------------------------------------------------
@@ -175,7 +176,7 @@ def main():
     for (league, season), (df, kind) in data.items():
         pdf = df[played_mask(df, kind)]
         for (market, timing, source), slot in sorted(slot_columns(df.columns).items()):
-            if set(slot) != OUTCOMES[market]:
+            if set(slot) != set(INV["market_outcomes"][market]):
                 continue
             b_rows.append([league, season, market, timing, source, len(pdf),
                            slot_coverage(pdf, slot)])
@@ -196,7 +197,7 @@ def main():
 
     c_rows = []
     for league in leagues:
-        has_time = any("Time" in df.columns and df["Time"].notna().any()
+        has_time = any(INV["kickoff_column"] in df.columns and df[INV["kickoff_column"]].notna().any()
                        for (lg, _), (df, _k) in data.items() if lg == league)
         c_rows.append([league, cov(league, "1x2", "pre", ["pinnacle"]),
                        cov(league, "1x2", "close", ["pinnacle"]),
@@ -227,7 +228,7 @@ def main():
         d_rows.append([s, len(df), len(teams), mode, int(teams.max()), len(above),
                        int((above - mode).sum()),
                        df["d"].min().date().isoformat(), df["d"].max().date().isoformat()])
-        wk = df.groupby(df["d"].dt.to_period("W-SUN")).size().tail(10)
+        wk = df.groupby(df["d"].dt.to_period("W-SUN")).size().tail(INV["last_weeks"])
         for per, n in wk.items():
             wk_rows.append([s, str(per), int(n)])
     d_tab = pd.DataFrame(d_rows, columns=[
@@ -241,7 +242,7 @@ def main():
         if kind != "main" or "AHh" not in df.columns or "PSH" not in df.columns:
             continue
         pdf = df[played_mask(df, kind)]
-        blk, ok = odds_block(pdf, MARKET_COLUMNS["1x2"][("pin", "pre")])
+        blk, ok = odds_block(pdf, MARKET_COLUMNS["1x2"][("pin", "pre")], CHK["min_valid_odds"])
         ah = pd.to_numeric(pdf["AHh"], errors="coerce")
         keep = ok & ah.notna()
         if keep.any():
@@ -292,14 +293,22 @@ def main():
           "### Extra-league rows outside the configured seasons (not analysed, not deleted)\n",
           md_table(out_tab),
           "## (b) Coverage per league x season x market x timing x source\n"
-          "Share of played rows with all outcomes present and > 1.0 (also in "
+          "Share of played rows with all outcomes present and above the minimum valid odds (also in "
           "inventory_coverage.csv).\n", md_table(b_tab, "{:.3f}"),
-          "## (c) Per league availability (share of played rows, pooled over seasons)\n",
+          "## (c) Per league availability (share of played rows, pooled over seasons)\n"
+          "Pooled shares hide the Pinnacle outage: Pinnacle is complete until the first suspect "
+          "month and then missing or degraded (months in pinnacle_reliability.md). Avg and Max "
+          "stay complete throughout.\n",
           md_table(c_tab),
+          "## Declared limit: extra leagues (USA, DNK, SWE)\n"
+          "These files hold closing 1X2 odds only: no pre-closing odds, no totals and no Asian "
+          "handicap. For them there is no CLV, no pre-match edge and no opening-odds blend. "
+          "Phase 3 will compare Max closing with the Pinnacle closing fair price only. This is "
+          "a declared limit, decided by the project owner at the start of Part B.\n",
           "## (d) USA playoffs\n", d_txt,
           "\nPer-team match counts per season (modal = regular-season count; teams above "
           "it played extra matches):\n", md_table(d_tab),
-          "\nLast 10 calendar weeks (Mon-Sun) of each season, played matches:\n",
+          f"\nLast {INV['last_weeks']} calendar weeks (Mon-Sun) of each season, played matches:\n",
           md_table(wk_tab),
           "\n## (e) Asian handicap sign convention (inferred empirically)\n", e_txt,
           "\n## (f) Unclassified columns\n", md_table(f_tab)]
@@ -336,8 +345,8 @@ def main():
         fs = first[league]
         n = len(lf)
         for timing in ("pre", "close"):
-            pb, pok = odds_block(lf, MARKET_COLUMNS["1x2"][("pin", timing)])
-            ab, aok = odds_block(lf, MARKET_COLUMNS["1x2"][("avg", timing)])
+            pb, pok = odds_block(lf, MARKET_COLUMNS["1x2"][("pin", timing)], CHK["min_valid_odds"])
+            ab, aok = odds_block(lf, MARKET_COLUMNS["1x2"][("avg", timing)], CHK["min_valid_odds"])
             if pb is None:
                 ret_rows.append([league, timing, n, fs, None, None, None])
                 continue
@@ -377,7 +386,11 @@ def main():
           "## Suspect months by reason (1X2; a month can have several reasons)\n", md_table(rc),
           "## Suspect months in other markets (count)\n", md_table(other),
           "## Retention (1X2; matches kept, and share of played matches)\n"
-          "(i) Pinnacle valid, only months before the first suspect month; (ii) Pinnacle valid "
+          "Note: (ii) is near 100% only because Avg fills the whole outage window; it is not "
+          "Pinnacle retention (the adopted rule never substitutes Avg, see sample_retention.md). "
+          "The first suspect month can come from a divergence breach in a fully covered month "
+          "(USA, SWE 2025-08): a conservative cut, not the start of the outage.\n"
+          "(i)Pinnacle valid, only months before the first suspect month; (ii) Pinnacle valid "
           "in non-suspect months, Avg valid in suspect months; (iii) Pinnacle valid, suspect "
           "months excluded. 'pre' rows are empty where the file has no pre columns.\n",
           md_table(ret), "## All suspect months (1X2)\n", md_table(sus_list)]

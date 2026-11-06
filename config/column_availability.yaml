@@ -23,3 +23,7 @@ families:
     close: {available: kickoff_closing, use: evaluation_only}
   other:         # bookmaker-count helper columns (Bb1X2, BbOU, BbAH), pre-closing
     none:  {available: pre_match, use: feature_ok}
+  derived:       # stage and ref_source depend on the whole season / feed health: not features
+    none:  {available: post_match, use: evaluation_only}
+  qa:            # quality flags computed from results and odds of the whole file
+    none:  {available: post_match, use: evaluation_only}

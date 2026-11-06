@@ -33,7 +33,7 @@ data_source:
     F1: ["2122", "2223", "2324", "2425", "2526"]
     N1: ["2122", "2223", "2324", "2425", "2526"]
     P1: ["2122", "2223", "2324", "2425", "2526"]
-    USA: [2021, 2022, 2023, 2024, 2025, 2026]   # calendar year; 2026 in progress, included
+    USA: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]   # calendar year; 2026 in progress, included
     SWE: [2021, 2022, 2023, 2024, 2025, 2026]   # calendar year; 2026 in progress, included
     DNK: ["2021/2022", "2022/2023", "2023/2024", "2024/2025", "2025/2026"]  # label as in file
   played_only: true
@@ -48,9 +48,75 @@ pinnacle_checks:
   stale_share_multiple: 3
   overround_range: [1.00, 1.08]
   divergence_p95_max: 0.05
+  min_valid_odds: 1.0        # odds must be strictly above this to count as valid
+  quantile_low: 0.05
+  quantile_high: 0.95
 inventory:
   ah_sign_bins: 5          # quantile bins of Pinnacle pre home-win probability for the AH sign check
   ah_sign_min_rows: 200
+  last_weeks: 10             # weeks shown at the end of each USA season
+  sources: [pinnacle, max, avg, bet365]
+  played_codes: [H, D, A]
+  result_columns: {main: FTR, extra: Res}
+  kickoff_column: Time
+  in_progress: {USA: "2026", SWE: "2026"}   # seasons still running at the snapshot
+  market_outcomes:
+    1x2: [H, D, A]
+    ou25: [over, under]
+    ah: [home, away]
 reliability_reference_source: avg   # source compared against Pinnacle in divergence
 columns:
   availability_file: config/column_availability.yaml
+cleaning:
+  odds_max_sane: 200.0          # odds above this are flagged (never changed)
+  overround_min: 1.00           # single-bookmaker (Pinnacle, Bet365) rows outside are flagged
+  overround_max: 1.25
+  near_duplicate_threshold: 0.88   # difflib ratio between team names of one league
+  max_loss_share: 0.20
+  min_valid_matches: 800
+  loss_exempt_leagues: [USA, SWE]  # accepted by decision (reference price loses matches by design)
+  split_phase_leagues: [USA, DNK]  # leagues with playoffs / split phases: team-count report
+  playoff_leagues: [USA]           # stage "playoff" rule applies only here
+  stage_unknown_leagues: [DNK]     # split phases exist but are not identifiable in the file
+  season_notes:
+    USA: {"2020": no_crowd_2020}
+  paths:
+    reference_price: config/reference_price.yaml
+    column_map: config/column_map.yaml
+    team_aliases: config/team_aliases.yaml
+feature_eligibility:   # canonical columns usable as pre-match features (no close, no post_match)
+  - ah_line_pre
+  - away
+  - date
+  - home
+  - kickoff
+  - league
+  - odds_1x2_avg_pre_a
+  - odds_1x2_avg_pre_d
+  - odds_1x2_avg_pre_h
+  - odds_1x2_b365_pre_a
+  - odds_1x2_b365_pre_d
+  - odds_1x2_b365_pre_h
+  - odds_1x2_max_pre_a
+  - odds_1x2_max_pre_d
+  - odds_1x2_max_pre_h
+  - odds_1x2_pin_pre_a
+  - odds_1x2_pin_pre_d
+  - odds_1x2_pin_pre_h
+  - odds_ah_avg_pre_away
+  - odds_ah_avg_pre_home
+  - odds_ah_b365_pre_away
+  - odds_ah_b365_pre_home
+  - odds_ah_max_pre_away
+  - odds_ah_max_pre_home
+  - odds_ah_pin_pre_away
+  - odds_ah_pin_pre_home
+  - odds_ou25_avg_pre_over
+  - odds_ou25_avg_pre_under
+  - odds_ou25_b365_pre_over
+  - odds_ou25_b365_pre_under
+  - odds_ou25_max_pre_over
+  - odds_ou25_max_pre_under
+  - odds_ou25_pin_pre_over
+  - odds_ou25_pin_pre_under
+  - season

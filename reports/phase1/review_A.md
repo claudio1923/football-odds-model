@@ -1,3 +1,5 @@
+Superseded by review_A2.md
+
 # Independent review of Phase 1A
 
 Reviewer scope: read-only except this file. Python run as `PYTHONNOUSERSITE=1 conda run -n fbmodel python ...` from the project directory. The project rules file is referred to as `[FORBIDDEN-TERM].md` here, because its file name contains a banned word.
@@ -101,7 +103,7 @@ Phase 1A is mostly sound, but it has one real bug: **the divergence diagnostic i
 | 4a | Silent drops | review of `read_raw.py` and the script | PASS with notes. Dropped: empty trailing columns and blank rows (file untouched), unplayed rows (`played_only`; 0 found), rows with unparsed dates (0). See MEDIUM-3 for the unreported season-filter drop |
 | 4b | Magic numbers | code review | FAIL (minor): see LOW-1 |
 | 4c | Closing odds as features | code review; the availability file maps `close` to `kickoff_closing` / `evaluation_only` in every family | PASS: nothing here builds features. The only use of closing odds is diagnostics. The `use` field in `column_availability.yaml` is not yet enforced by any code, because no feature code exists |
-| 4d | Banned words | case-insensitive `grep -rIil -E` of the hook's pattern over all files, excluding `.git`, `__pycache__`, `data` and the git-excluded rules file and `.claude/` | PASS: 0 files in tracked or untracked content (including `diary.md`, reports, tests, config). `data/` also has 0 text hits. The only files containing banned words are the git-excluded rules file and `.claude/`, which are excluded by `.git/info/exclude` |
+| 4d | Banned words | case-insensitive `grep -rIil -E` of the hook's pattern over all files, excluding `.git`, `__pycache__`, `data` and the git-excluded rules file and the local tool folder | PASS: 0 files in tracked or untracked content (including `diary.md`, reports, tests, config). `data/` also has 0 text hits. The only files containing banned words are the git-excluded rules file and the local tool folder, which are excluded by `.git/info/exclude` |
 | 4e | Tests cover spec behaviours | read `tests/` (146 tests) | PARTIAL: see gaps below |
 | 5 | Report sanity | read the reports | PASS with notes: MEDIUM-1, MEDIUM-2 |
 

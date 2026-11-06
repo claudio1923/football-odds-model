@@ -1,6 +1,6 @@
 # Pinnacle reliability (Phase 1A)
 
-Thresholds (config pinnacle_checks, set before any betting analysis): {'min_coverage': 0.95, 'stale_share_min': 0.1, 'stale_share_multiple': 3, 'overround_range': [1.0, 1.08], 'divergence_p95_max': 0.05}.
+Thresholds (config pinnacle_checks, set before any betting analysis): {'min_coverage': 0.95, 'stale_share_min': 0.1, 'stale_share_multiple': 3, 'overround_range': [1.0, 1.08], 'divergence_p95_max': 0.05, 'min_valid_odds': 1.0, 'quantile_low': 0.05, 'quantile_high': 0.95}.
 
 Full per league x month x market table with all statistics: pinnacle_reliability.csv. A month is suspect if any threshold is breached for a timing present in the file; USA/DNK/SWE files contain closing odds only, so only close is checked there. first_suspect_month and the retention tables use the 1X2 rows. Played matches only.
 
@@ -18,7 +18,7 @@ Full per league x month x market table with all statistics: pinnacle_reliability
 | P1 | 50 | 5 | 2026-01 |
 | SP1 | 51 | 5 | 2026-01 |
 | SWE | 49 | 11 | 2025-08 |
-| USA | 61 | 11 | 2025-08 |
+| USA | 98 | 11 | 2025-08 |
 
 ## Suspect months by reason (1X2; a month can have several reasons)
 
@@ -72,7 +72,8 @@ Full per league x month x market table with all statistics: pinnacle_reliability
 | SP1 | ou25 | 6 |
 
 ## Retention (1X2; matches kept, and share of played matches)
-(i) Pinnacle valid, only months before the first suspect month; (ii) Pinnacle valid in non-suspect months, Avg valid in suspect months; (iii) Pinnacle valid, suspect months excluded. 'pre' rows are empty where the file has no pre columns.
+Note: (ii) is near 100% only because Avg fills the whole outage window; it is not Pinnacle retention (the adopted rule never substitutes Avg, see sample_retention.md). The first suspect month can come from a divergence breach in a fully covered month (USA, SWE 2025-08): a conservative cut, not the start of the outage.
+(i)Pinnacle valid, only months before the first suspect month; (ii) Pinnacle valid in non-suspect months, Avg valid in suspect months; (iii) Pinnacle valid, suspect months excluded. 'pre' rows are empty where the file has no pre columns.
 
 | league | timing | played_matches | first_suspect_month | kept_i_pin_before_first_suspect | kept_ii_pin_reliable_else_avg | kept_iii_pin_excl_suspect_months | share_i_pin_before_first_suspect | share_ii_pin_reliable_else_avg | share_iii_pin_excl_suspect_months |
 |---|---|---|---|---|---|---|---|---|---|
@@ -92,8 +93,8 @@ Full per league x month x market table with all statistics: pinnacle_reliability
 | N1 | close | 1530 | 2025-10 | 1287.0000 | 1530.0000 | 1314.0000 | 0.8412 | 1.0000 | 0.8588 |
 | P1 | pre | 1530 | 2026-01 | 1365.0000 | 1529.0000 | 1365.0000 | 0.8922 | 0.9993 | 0.8922 |
 | P1 | close | 1530 | 2026-01 | 1366.0000 | 1530.0000 | 1366.0000 | 0.8928 | 1.0000 | 0.8928 |
-| USA | pre | 3039 | 2025-08 |  |  |  |  |  |  |
-| USA | close | 3039 | 2025-08 | 2368.0000 | 3037.0000 | 2469.0000 | 0.7792 | 0.9993 | 0.8124 |
+| USA | pre | 4583 | 2025-08 |  |  |  |  |  |  |
+| USA | close | 4583 | 2025-08 | 3911.0000 | 4580.0000 | 4012.0000 | 0.8534 | 0.9993 | 0.8754 |
 | DNK | pre | 963 | 2025-11 |  |  |  |  |  |  |
 | DNK | close | 963 | 2025-11 | 849.0000 | 963.0000 | 849.0000 | 0.8816 | 1.0000 | 0.8816 |
 | SWE | pre | 1422 | 2025-08 |  |  |  |  |  |  |
