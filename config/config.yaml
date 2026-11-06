@@ -120,3 +120,13 @@ feature_eligibility:   # canonical columns usable as pre-match features (no clos
   - odds_ou25_pin_pre_over
   - odds_ou25_pin_pre_under
   - season
+model:   # Phase 2 Dixon-Coles; none of these values is tuned on evaluation seasons
+  xi: 0.0019                 # time decay per day (half-life about 365 days), fixed a priori
+  l2_penalty: 3.0            # ridge strength on att and def (prior sd about 0.4), fixed a priori
+  refit_days: 7
+  max_goals: 10
+  min_team_matches: 10       # fewer past matches than this -> flagged (still predicted)
+  rho_bounds: [-0.3, 0.3]
+  tau_floor: 1.0e-6          # lower clip of tau inside the likelihood
+  maxiter: 500
+  ou_line: 2.5

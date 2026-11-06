@@ -116,3 +116,38 @@ Project owner's decisions on the Part B report:
 3. Reggiana / Reggina (I2) are two different clubs: never merge. `team_aliases.yaml` stays empty.
 4. Retention (ii) of Part A is near 100% only because Avg fills the outage window: noted. `sample_retention.md` is the reference number.
 Housekeeping: at the start of this step one leftover process (a reviewer's scratch script under `conda run`) was found running and stopped; no agent was running; the working tree was clean at commit 0e4b6d8.
+
+## Phase 2 — Market math and Dixon-Coles model (2026-11-06)
+
+Numbers from `PYTHONNOUSERSITE=1 conda run -n fbmodel python scripts/run_phase2.py` (`reports/phase2/model_summary.md`) and `... python -m pytest -q`.
+
+### What was built
+- `src/fbmodel/market.py`: implied_probs, overround, devig_proportional, devig_power (per-row bisection on k, 200 halvings: an algorithmic constant, not a parameter), expected_value, settle_ah, settle_ou (quarter lines split in two half stakes; `half_lines` is the shared helper). Odds arrays carry the outcomes on the last axis.
+- `src/fbmodel/model/dixon_coles.py`: `tau`, `score_matrix` (not renormalised; sum = 1 - truncated mass), `markets_from_matrix` (renormalises; AH full/half win, push, half/full loss for the home side, fair odds with expected profit 0), `fit_dc` (weighted ML, analytic gradient, L-BFGS-B, L2 on att and def, rho bounded), `walk_forward`. Gradient checked against finite differences on real data (error about 1e-4 against a gradient norm of about 1.2e3).
+- `scripts/run_phase2.py` writes `data/processed/predictions.parquet` and `reports/phase2/model_summary.md`.
+
+### Decisions (all parameters in config `model:`; none tuned on evaluation seasons)
+- xi = 0.0019 per day (given), l2_penalty = 3.0 (prior sd of att/def about 0.4, chosen a priori), refit_days 7, max_goals 10, min_team_matches 10, rho_bounds [-0.3, 0.3], tau_floor 1e-6, ou_line 2.5. xi was NOT tuned.
+- `fit_dc` raises AssertionError if any passed match has date >= ref_date (the caller filters). I read "assert it" this way because filtering inside would make the assertion vacuous.
+- Refit grid: t0 = first date of the first predicted season of the league; block k = [t0 + 7k, t0 + 7(k+1)); every match of a block is predicted from the fit on matches strictly before the block start (so a prediction can be up to 6 days staler than strictly necessary: conservative). `fit_ref_date` = block start. Warm start from the previous block's parameters, matched by team name; unseen teams start at 0. Team list of a fit = teams present in its training matches only, so a future result cannot change earlier fits.
+- The first season of each league (earliest dated) is training only: D1/E0/F1/I1/I2/N1/P1/SP1 start predictions in 2022/23, DNK in 2022/23, SWE in 2022, USA in 2018 (USA 2017 is training only).
+- All matches (including USA playoffs and the USA 2026 season in progress) are predicted and used in later fits; `stage` is carried through for later filtering.
+- `ah_line_pre` (a pre-match line, not an odds price) is used only to price the AH probabilities of the output; it is never an input to a fit. No odds column enters the model.
+- Predictions parquet columns: match_id, league, season, date, stage, fit_ref_date, lambda_home, lambda_away, rho, home_adv, p_home, p_draw, p_away, p_over25, p_under25, p_btts, truncated_mass, ah_line, ah_full_win, ah_half_win, ah_push, ah_half_loss, ah_full_loss, ah_fair_odds, n_train_matches, flag_home_few_matches, flag_away_few_matches, fit_ok.
+
+### Results (see model_summary.md)
+- Predictions shape (17192, 28) over 11 leagues; every league was fitted; failed fits (optimizer not reporting success): 0 in all leagues; maximum truncated mass 7.9e-03 (D1; mean about 1e-5 to 1e-4). Total runtime 80.7 s.
+- Home advantage per league lies between about 0.08 (DNK) and 0.55 (USA 2018, falling over time); rho is small and varies in sign by league.
+- Few-matches flags are frequent in I2 (promotion/relegation).
+
+### Process notes
+- Test writer worked from the spec only; a failing run printed a few lines of implementation code in a traceback, and the spec did not list `ou_line` among the config keys (it was added to the config and the test configuration). 258 tests pass.
+- Reviewer report: `reports/phase2/review.md`.
+
+### Open points
+- No evaluation scores, edges or bets in this phase (next phase).
+
+### Reviewer follow-up (reports/phase2/review.md: no high or medium defects, 10 checks pass)
+- Confirmed by the reviewer: bit-identical earlier predictions when later results change (late, middle and early-predicted matches), fit_ref_date <= date for all 17192 rows, gradient and likelihood checks, market functions against a brute-force implementation, parquet byte-identical on re-run.
+- Noted, not changed (low): predictions depend slightly on the warm-start chain (up to 3.3e-4 in lambda against a cold refit; deterministic, no look-ahead); time decay is measured from the block start and matches inside the current 7-day block are not used; `devig_power` returns a mixed row for NaN odds, so Phase 3 must drop incomplete rows first; fair AH odds can be very large for strong underdogs, so cap or skip them when computing edges; playoff, unknown-stage matches and USA 2020 are used in training without special handling; literals still in code (1e-3 floor in `fit_dc`, 64.0 bracket in `devig_power`, fixed `p_over25`/`p_under25` names with a configurable ou_line); missing tests (gradient vs finite differences, NaN odds, run_phase2.py, ah_line_pre invariance).
+- Fixed: dead `_ym` column removed from run_phase2.py.
