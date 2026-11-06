@@ -1,0 +1,13 @@
+market,reason,n,signal,threshold
+1x2,nan_odds_line_or_probs,1,model,0.02
+ou25,nan_odds_line_or_probs,1,model,0.02
+ah,nan_odds_line_or_probs,3,model,0.02
+1x2,nan_odds_line_or_probs,1,model,0.05
+ou25,nan_odds_line_or_probs,1,model,0.05
+ah,nan_odds_line_or_probs,3,model,0.05
+1x2,nan_odds_line_or_probs,1,model,0.1
+ou25,nan_odds_line_or_probs,1,model,0.1
+ah,nan_odds_line_or_probs,3,model,0.1
+1x2,nan_odds_line_or_probs,2820,blend,0.02
+1x2,nan_odds_line_or_probs,2820,blend,0.05
+1x2,nan_odds_line_or_probs,2820,blend,0.1

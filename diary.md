@@ -151,3 +151,35 @@ Numbers from `PYTHONNOUSERSITE=1 conda run -n fbmodel python scripts/run_phase2.
 - Confirmed by the reviewer: bit-identical earlier predictions when later results change (late, middle and early-predicted matches), fit_ref_date <= date for all 17192 rows, gradient and likelihood checks, market functions against a brute-force implementation, parquet byte-identical on re-run.
 - Noted, not changed (low): predictions depend slightly on the warm-start chain (up to 3.3e-4 in lambda against a cold refit; deterministic, no look-ahead); time decay is measured from the block start and matches inside the current 7-day block are not used; `devig_power` returns a mixed row for NaN odds, so Phase 3 must drop incomplete rows first; fair AH odds can be very large for strong underdogs, so cap or skip them when computing edges; playoff, unknown-stage matches and USA 2020 are used in training without special handling; literals still in code (1e-3 floor in `fit_dc`, 64.0 bracket in `devig_power`, fixed `p_over25`/`p_under25` names with a configurable ou_line); missing tests (gradient vs finite differences, NaN odds, run_phase2.py, ah_line_pre invariance).
 - Fixed: dead `_ym` column removed from run_phase2.py.
+
+## Phase 3 — Evaluation, simple bet simulation, README (2026-11-06)
+
+Numbers from `PYTHONNOUSERSITE=1 conda run -n fbmodel python scripts/run_phase3.py`, `scripts/build_readme.py` and `python -m pytest -q` (305 tests pass). Tables: `reports/phase3/forecast_quality.md`, `bet_simulation.md`, CSVs, `calibration_p_home.png`; README.md is generated.
+
+### What was built
+- `src/fbmodel/evaluation.py` (log loss, Brier, binary Brier, RPS, calibration table and ECE, paired and single-sample bootstrap, blend weight and expanding per-season weights), `src/fbmodel/betting.py` (select_bets, settle_bets, CLV, bet_stats, streak, drawdown), `scripts/run_phase3.py`, `scripts/build_readme.py`. Config `evaluation:` (B 2000, seed 42, level 0.95, 10 bins, 101 blend grid points, max_bet_odds 10, thresholds 0.02/0.05/0.10) fixed before looking at results.
+- Forecast quality and betting are separate files and sections. Model and benchmark are always scored on the same matches (benchmark rows with ref_source pin).
+
+### Decisions
+- AH edge = expected profit per unit from the five outcome probabilities (equals p*odds-1 when there are no pushes or half outcomes). The away side swaps win and loss roles. An AH side is excluded if its Max pre odds or its model fair odds exceed max_bet_odds.
+- Blend bets exist for 1X2 only (the blend is defined on 1X2 log loss). Blend probabilities exist only from the second evaluated season of each league.
+- CLV for AH is defined only when the Pinnacle closing line equals ah_line_pre (otherwise NaN; n_clv reported).
+- Added a reference table (not requested): mean CLV of an uninformed bet on every 1X2 outcome at Max pre odds, to read the CLV cells against (Max pre odds are the best of many books).
+- Ties in the chronological order of bets (same date) are broken by match_id, so streak and drawdown are deterministic.
+
+### Results (see the reports for all rows)
+- Pooled main leagues vs Pinnacle closing (n 9368): model 1X2 log loss 0.9867 vs 0.9617, diff 0.0250, CI [0.0215, 0.0285]; vs Pinnacle pre (n 9364): 0.9868 vs 0.9656, diff 0.0211. USA, DNK and SWE (closing only): diff 0.0215, 0.0263, 0.0239 with CIs above 0. O/U 2.5 main leagues: diff 0.0128 [0.0098, 0.0158]. The model is worse than Pinnacle on all three 1X2 scores. ECE of p_home: main model 0.0112 vs Pinnacle closing 0.0173; USA 0.0207 vs 0.0233.
+- Blend weight w is 0 in 21 of 24 league-seasons that have a blend (D1 2324 0.13, N1 2324 0.27, N1 2425 0.05); the blend is therefore mostly the Pinnacle pre fair price.
+- Bets (pooled main): every model-signal cell has negative ROI (1X2: -0.083, -0.100, -0.111 for thresholds 0.02, 0.05, 0.10) and negative mean CLV; the blend has positive mean CLV (0.025, 0.036, 0.056) but ROI intervals that include 0 (the blend at 0.10 has 140 bets, ROI CI [-0.397, 0.438]). The uninformed reference CLV is -0.0054. No cell is selected as best; positive blend CLV is not read as model skill.
+
+### Reviewer (reports/phase3/review.md): pass, no leakage
+- Scrambling all closing odds, ah_line_close and results left the bets identical; blend weights of season s use earlier seasons only; independent recomputation of the scores, ECE, blend weights and several bet cells matches. Residual information in the eligibility gate: a calendar cutoff month per league, a whole-month suspect flag and the presence of Pinnacle closing prices; it carries no result information but does carry hindsight about the Pinnacle outage.
+- Fixed after review: the over-2.5 outcome uses config model.ou_line; README table shows n_clv and states how to read the reference.
+- Open (low): `OU_LINE = 2.5` constant in betting.py, `evaluation.stake` unused, the USA panel and snapshot date are literals in scripts; no tests for the AH fair-odds exclusion, ah_line == ah_line_pre, an end-to-end run of run_phase3.py and build_readme.py against the CSVs; select_bets does not assert ah_line == ah_line_pre (only 2 gated rows differ, both NaN).
+
+### Process notes
+- Test writer worked from the spec only; no implementation lines were printed. 
+- Two unnecessary no-op workflow calls were made earlier in the project (Phase 1); none in this phase.
+
+### Open points / next steps
+- Expected goals, lineups, pre-match odds for MLS/DNK/SWE; a longer clean Pinnacle pre-match history.

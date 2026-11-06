@@ -130,3 +130,12 @@ model:   # Phase 2 Dixon-Coles; none of these values is tuned on evaluation seas
   tau_floor: 1.0e-6          # lower clip of tau inside the likelihood
   maxiter: 500
   ou_line: 2.5
+evaluation:   # Phase 3; fixed before looking at results
+  bootstrap_B: 2000
+  bootstrap_seed: 42
+  ci_level: 0.95
+  calibration_bins: 10
+  blend_grid_points: 101        # weights 0.00, 0.01, ..., 1.00
+  max_bet_odds: 10
+  bet_thresholds: [0.02, 0.05, 0.10]
+  stake: 1.0
