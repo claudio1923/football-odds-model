@@ -5,7 +5,8 @@ Local Python project for pre-match football betting models (markets: 1X2, Asian 
 ## Environment
 
 ```
-conda env create -f environment.yml
+conda create -n fbmodel -c conda-forge python=3.11 pip -y
+conda run -n fbmodel python -m pip install -r requirements.lock.txt
 conda run -n fbmodel python -m pip install -e .
 ```
 

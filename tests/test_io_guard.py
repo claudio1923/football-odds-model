@@ -86,3 +86,16 @@ def test_verify_manifest_missing_file(tmp_path):
     f.unlink()
     with pytest.raises(FileNotFoundError):
         verify_raw_manifest(manifest)
+
+
+def test_safe_write_path_default_raw_dir_from_config():
+    from fbmodel.config import load_config
+
+    paths = load_config()["paths"]
+    with pytest.raises(PermissionError):
+        safe_write_path(paths["raw"] / "x.csv")
+    with pytest.raises(PermissionError):
+        safe_write_path(paths["processed"] / ".." / "raw" / "x.csv")
+    target = paths["processed"] / "x.csv"
+    assert safe_write_path(target) == target.resolve()
+    assert not target.exists()
