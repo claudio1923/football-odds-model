@@ -1,0 +1,8 @@
+paths:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+  reports: reports
+  manifest: data/raw/MANIFEST.sha256
+random_seed: 42
+data_source:  # TODO_PHASE1

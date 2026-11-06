@@ -1,0 +1,7 @@
+data/**
+!data/**/
+!data/**/.gitkeep
+__pycache__/
+.pytest_cache/
+.idea/
+*.egg-info/

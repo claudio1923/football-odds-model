@@ -1,0 +1,16 @@
+name: fbmodel
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - pandas
+  - numpy
+  - scipy
+  - statsmodels
+  - pyarrow
+  - pyyaml
+  - requests
+  - matplotlib
+  - pytest
+  - pip
