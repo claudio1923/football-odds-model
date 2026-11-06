@@ -129,7 +129,10 @@ def assign_stage(df: pd.DataFrame, cfg) -> pd.Series:
         if league not in cl["playoff_leagues"]:
             continue
         if in_prog.get(league) == season:
-            stage[g.index] = "unknown"
+            # in progress: regular only while every team has played the same number of
+            # matches (no team beyond the common count); otherwise unknown
+            per_team = pd.concat([g["home"], g["away"]]).value_counts()
+            stage[g.index] = "regular" if per_team.nunique() == 1 else "unknown"
             continue
         g = g.sort_values("date", kind="mergesort")
         counts, prior_min = {}, pd.Series(0, index=g.index)
